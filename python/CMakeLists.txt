@@ -2,7 +2,7 @@
 set(python_destination applications/impurity_solvers/ctint_tutorial)
 
 # make a local pytriqs copy
-triqs_prepare_local_pytriqs_merged_with_my_python(${python_destination})
+triqs_prepare_local_pytriqs(${python_destination})
 
 # Build the cython module
 triqs_python_extension(ctint_tutorial ${python_destination})

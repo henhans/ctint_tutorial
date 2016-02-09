@@ -2,6 +2,7 @@
 #include <triqs/mc_tools.hpp>
 #include <triqs/det_manip.hpp>
 #include <boost/serialization/complex.hpp>
+#include <boost/serialization/map.hpp>
 
 // --------------- The QMC configuration ----------------
 
@@ -19,12 +20,12 @@ struct g0bar_tau {
 
  double operator()(arg_t const &x, arg_t const &y) const {
   if ((x.tau == y.tau)) { // G_\sigma(0^-) - \alpha(\sigma s)
-   return 1.0 + gt[0](0, 0) - (0.5 + (2 * (s == x.s ? 1 : 0) - 1) * delta);
+   return 1.0 + gt[0](0, 0).real() - (0.5 + (2 * (s == x.s ? 1 : 0) - 1) * delta);
   }
   auto x_y = x.tau - y.tau;
   bool b = (x_y >= 0);
   if (!b) x_y += beta;
-  double res = gt[closest_mesh_pt(x_y)](0, 0);
+  double res = gt[closest_mesh_pt(x_y)](0, 0).real();
   return (b ? res : -res); // take into account antiperiodicity
  }
 };
@@ -123,9 +124,11 @@ struct measure_M {
   }
  }
 
- void collect_results(boost::mpi::communicator const &c) {
-  boost::mpi::all_reduce(c, Mw, Mw, std14::plus<>());
-  boost::mpi::all_reduce(c, Z, Z, std14::plus<>());
+ void collect_results(/*boost::*/mpi::communicator const &c) {
+  //boost::mpi::all_reduce(c, Mw, Mw, std14::plus<>());
+  //boost::mpi::all_reduce(c, Z, Z, std14::plus<>());
+  mpi::mpi_all_reduce(Mw, c);
+  mpi::mpi_all_reduce(Z, c);
   Mw = Mw / (-Z * beta);
  }
 };
@@ -170,8 +173,8 @@ void ctint_solver::solve(double U, double delta, int n_cycles, int length_cycle,
  auto config = configuration{g0tilde_tau, beta, delta};
 
  // Register moves and measurements
- CTQMC.add_move(move_insert{&config, CTQMC.rng(), beta, U}, "insertion");
- CTQMC.add_move(move_remove{&config, CTQMC.rng(), beta, U}, "removal");
+ CTQMC.add_move(move_insert{&config, CTQMC.get_rng(), beta, U}, "insertion");
+ CTQMC.add_move(move_remove{&config, CTQMC.get_rng(), beta, U}, "removal");
  CTQMC.add_measure(measure_M{&config, M_iw, beta}, "M measurement");
 
  // Run and collect results
